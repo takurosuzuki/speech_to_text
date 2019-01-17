@@ -1,0 +1,89 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create Lambda function by using AWS SAM.
+Globals:
+  Function:
+    Environment:
+      Variables:
+        TABLE_NAME:
+          Ref: AICC1761519s3wavTable
+    MemorySize: 256
+    Runtime: nodejs8.10
+    Timeout: 60
+Resources:
+  AICC1761519s3wavFunc:
+    Events:
+      LogsProcessor: null
+      Properties:
+        LogGroupName:
+          Ref: AICC1761519s3wavLogGroup
+      Type: CloudWatchLogs
+    Properties:
+      CodeUri: s3://aicc-1761519-4-s3wav-bkt/f4da09e4a0543ad4d7cf20971b349251
+      Handler: index.handler
+      Role:
+        Fn::GetAtt:
+        - AICC1761519s3wavIamRole
+        - Arn
+    Type: AWS::Serverless::Function
+  AICC1761519s3wavFuncLambdaPermission:
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::Sub: ${AICC1761519s3wavFunc}
+      Principal: connect.amazonaws.com
+      SourceAccount: '326447680198'
+      SourceArn: arn:aws:connect:ap-northeast-1:326447680198:*
+    Type: AWS::Lambda::Permission
+  AICC1761519s3wavIamRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+        Version: '2012-10-17'
+      Policies:
+      - PolicyDocument:
+          Statement:
+          - Action: cloudwatch:*
+            Effect: Allow
+            Resource: '*'
+          - Action: s3:*
+            Effect: Allow
+            Resource: '*'
+          - Action: logs:*
+            Effect: Allow
+            Resource: '*'
+          - Action: dynamodb:*
+            Effect: Allow
+            Resource: '*'
+          Version: '2012-10-17'
+        PolicyName: AICC-1761519-s3wav-lambda
+    Type: AWS::IAM::Role
+  AICC1761519s3wavLogGroup:
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${AICC1761519s3wavFunc}
+      RetentionInDays: 14
+    Type: AWS::Logs::LogGroup
+  AICC1761519s3wavTable:
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: id
+        AttributeType: S
+      - AttributeName: phoneNumber
+        AttributeType: S
+      KeySchema:
+      - AttributeName: id
+        KeyType: HASH
+      - AttributeName: phoneNumber
+        KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      Tags:
+      - Key: kikaku_1
+        Value: AICC
+    Type: AWS::DynamoDB::Table
+Transform: AWS::Serverless-2016-10-31

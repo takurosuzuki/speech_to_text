@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create Lambda function by using AWS SAM.
+Transform: AWS::Serverless-2016-10-31
+
+Globals:
+  Function:
+    Runtime: nodejs8.10
+    Timeout: 60
+    MemorySize: 256
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref AICC1761519s3wavTable
+
+Resources:
+  AICC1761519s3wavFunc:
+    Type: AWS::Serverless::Function
+    Properties:
+      #      Handler: functions/index.handler
+      # Role: arn:aws:iam::326447680198:role/service-role/1761519_lambda_fileupload_role
+      Role: !GetAtt AICC1761519s3wavIamRole.Arn
+      CodeUri: 'functions/index.zip'
+      Handler: index.handler
+      
+    Events:
+      LogsProcessor:
+      Type: CloudWatchLogs
+      Properties:
+        LogGroupName: !Ref AICC1761519s3wavLogGroup
+        # FilterPattern: Hello log processor
+
+  AICC1761519s3wavFuncLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Sub ${AICC1761519s3wavFunc}
+      Principal: connect.amazonaws.com
+      Action: 'lambda:InvokeFunction'
+      SourceAccount: '326447680198'
+      SourceArn: 'arn:aws:connect:ap-northeast-1:326447680198:*'
+
+  AICC1761519s3wavLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AICC1761519s3wavFunc}
+      RetentionInDays: 14
+
+  AICC1761519s3wavTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: "id"
+          AttributeType: "S"
+        -
+          AttributeName: "phoneNumber"
+          AttributeType: "S"
+      KeySchema:
+        -
+          AttributeName: "id"
+          KeyType: "HASH"
+        -
+          AttributeName: "phoneNumber"
+          KeyType: "RANGE"
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      Tags:
+        -
+          Key: "kikaku_1"
+          Value: "AICC"
+
+#  SamSampleLambda2LogStream:
+#    Type: AWS::Logs::LogStream
+#    Properties:
+#      LogGroupName: !Sub /aws/lambda/${SamSampleLambda2}
+#      LogStreamName: sam-log-stream
+
+  AICC1761519s3wavIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: "sts:AssumeRole"
+      Policies:
+        -
+          PolicyName: "AICC-1761519-s3wav-lambda"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action: "cloudwatch:*"
+                Resource: "*"
+              -
+                Effect: "Allow"
+                Action: "s3:*"
+                Resource: "*"
+              -
+                Effect: "Allow"
+                Action: "logs:*"
+                Resource: "*"
+              -
+                Effect: "Allow"
+                Action: "dynamodb:*"
+                Resource: "*"
+
